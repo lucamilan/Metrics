@@ -1,2 +1,2 @@
-# Mini Graphite Client
+# Mini Metrics
 Simple .NET client library for feeding data into Graphite
