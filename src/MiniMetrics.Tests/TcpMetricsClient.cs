@@ -22,33 +22,22 @@ namespace MiniMetrics.Tests
         {
             const String message = "test";
 
-            var tcs = new TaskCompletionSource<String>();
             var @event = new ManualResetEvent(false);
+            var result = string.Empty;
+
             MiniMetrics.TcpMetricsClient.StartAsync(IPAddress.Loopback, MetricsOptions.GraphiteDefaultServerPort)
                                         .ContinueWith(_ =>
                                                       {
-                                                          if (_.Exception != null)
-                                                          {
-                                                              tcs.TrySetException(_.Exception.GetBaseException());
-                                                              @event.Set();
-                                                              return;
-                                                          }
-
                                                           _.Result.OnMessageSent += (sender, args) =>
                                                                                     {
-                                                                                        tcs.SetResult(args.Message);
+                                                                                        result = message;
                                                                                         @event.Set();
                                                                                     };
                                                           _.Result.Send(message);
-                                                      })
-                                        .ContinueWith(_ => tcs.Task)
-                                        .Unwrap()
-                                        .ContinueWith(_ =>
-                                                      {
-                                                          @event.WaitOne(TimeSpan.FromSeconds(10d));
-                                                          Assert.Equal(message, _.Result);
-                                                      })
-                                        .Wait();
+                                                      });
+
+            @event.WaitOne(TimeSpan.FromSeconds(10d));
+            Assert.Equal(message, result);
         }
 
         public void Dispose()

@@ -115,37 +115,42 @@ namespace MiniMetrics
             catch { }
         }
 
-        private Task BackgroundWorkAsync(CancellationToken token)
+        private void BackgroundWorkAsync(CancellationToken token)
         {
+            BuildTask(token).ContinueWith(_ => BackgroundWorkAsync(token), token);
+        }
+
+        private Task BuildTask(CancellationToken token)
+        {
+            Task task;
             String message;
 
-            if (!_messages.TryDequeue(out message))
-                return Task.Delay(_breathTime, token)
-                           .ContinueWith(_ => BackgroundWorkAsync(token), token)
-                           .Unwrap();
+            if (_messages.TryDequeue(out message))
+            {
+                var bytes = _encodingFactory().GetBytes(message);
+                var stream = _client.GetStream();
 
-            var bytes = _encodingFactory().GetBytes(message);
-            var stream = _client.GetStream();
+                task = Task.Factory
+                           .FromAsync(stream.BeginWrite, stream.EndWrite, bytes, 0, bytes.Length, null)
+                           .ContinueWith(_ =>
+                                         {
+                                             stream.Dispose();
 
-            return Task.Factory
-                       .FromAsync(stream.BeginWrite, stream.EndWrite, bytes, 0, bytes.Length, null)
-                       .ContinueWith(_ =>
-                                     {
-                                         stream.Dispose();
-                                     
-                                         if (_.Exception != null)
-                                             throw _.Exception.GetBaseException();
-                                     
-                                         if (token.IsCancellationRequested)
-                                             throw new Exception("task has been cancelled.");
-                                     
-                                         var temp = Interlocked.CompareExchange(ref OnMessageSent, null, null);
-                                         temp?.Invoke(this, new MessageSentEventArgs(message));
-                                     
-                                         return BackgroundWorkAsync(token);
-                                     },
-                                     token)
-                       .Unwrap();
+                                             if (_.Exception != null)
+                                                 throw _.Exception.GetBaseException();
+
+                                             if (token.IsCancellationRequested)
+                                                 throw new Exception("task has been cancelled.");
+
+                                             var temp = Interlocked.CompareExchange(ref OnMessageSent, null, null);
+                                             temp?.Invoke(this, new MessageSentEventArgs(message));
+                                         },
+                                         token);
+            }
+            else
+                task = Task.Delay(_breathTime, token);
+
+            return task;
         }
     }
 }
