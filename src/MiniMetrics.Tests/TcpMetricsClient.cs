@@ -2,7 +2,6 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace MiniMetrics.Tests
@@ -36,7 +35,9 @@ namespace MiniMetrics.Tests
                                                           _.Result.Send(message);
                                                       });
 
-            @event.WaitOne(TimeSpan.FromSeconds(10d));
+            if (!@event.WaitOne(TimeSpan.FromSeconds(10d)))
+                throw new Exception("timed out");
+
             Assert.Equal(message, result);
         }
 

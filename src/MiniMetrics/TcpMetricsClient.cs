@@ -6,10 +6,10 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using MiniMetrics.Extensions;
+using MiniMetrics.Net;
 
 namespace MiniMetrics
 {
-    // TODO: throw ObjectDisposedException
     // TODO: autorecovery
     public class TcpMetricsClient : IMetricsClient
     {
@@ -17,7 +17,7 @@ namespace MiniMetrics
 
         private readonly ConcurrentQueue<String> _messages = new ConcurrentQueue<String>();
         private readonly CancellationTokenSource _cts;
-        private readonly TcpClient _client;
+        private readonly OutbountChannel _channel;
         private readonly TimeSpan _breathTime;
         private readonly Func<Encoding> _encodingFactory;
 
@@ -71,23 +71,24 @@ namespace MiniMetrics
                                                       TimeSpan breathTime,
                                                       Func<Encoding> encodingFactory = null)
         {
-            var client = new TcpClient { ExclusiveAddressUse = false };
-
-            return client.ConnectAsync(address, port)
-                         .ContinueWith(_ =>
-                                       {
-                                           _.ThrowOnError();
-                                           return (IMetricsClient)new TcpMetricsClient(client,
-                                                                                       breathTime,
-                                                                                       encodingFactory ?? (() => new UTF8Encoding(true)));
-                                       });
+            var channel = new OutbountChannel(new TcpClient { ExclusiveAddressUse = false },
+                                              address,
+                                              port);
+            return channel.ConnectAsync()
+                          .ContinueWith(_ =>
+                                        {
+                                            _.ThrowOnError();
+                                            return (IMetricsClient)new TcpMetricsClient(channel,
+                                                                                        breathTime,
+                                                                                        encodingFactory ?? (() => new UTF8Encoding(true)));
+                                        });
         }
 
-        private TcpMetricsClient(TcpClient client,
+        private TcpMetricsClient(OutbountChannel channel,
                                  TimeSpan breathTime,
                                  Func<Encoding> encodingFactory)
         {
-            _client = client;
+            _channel = channel;
             _breathTime = breathTime;
             _encodingFactory = encodingFactory;
             _cts = new CancellationTokenSource();
@@ -113,7 +114,7 @@ namespace MiniMetrics
             try
             {
                 _cts.Cancel();
-                _client?.Close();
+                _channel?.Dispose();
             }
             catch { }
         }
@@ -125,35 +126,24 @@ namespace MiniMetrics
 
         private Task BuildTask(CancellationToken token)
         {
-            Task task;
             String message;
 
-            if (_messages.TryDequeue(out message))
-            {
-                var bytes = _encodingFactory().GetBytes(message);
-                var stream = _client.GetStream();
+            return _messages.TryDequeue(out message)
+                       ? _channel.WriteAsync(_encodingFactory().GetBytes(message), token)
+                                 .ContinueWith(_ =>
+                                               {
+                                                   _.ThrowOnError();
 
-                task = Task.Factory
-                           .FromAsync(stream.BeginWrite, stream.EndWrite, bytes, 0, bytes.Length, null) // TODO: it shoud work by "chunks".
-                           .ContinueWith(_ =>
-                                         {
-                                             stream.Dispose();
+                                                   if (token.IsCancellationRequested)
+                                                       throw new Exception("task has been cancelled.");
 
-                                             if (_.Exception != null)
-                                                 throw _.Exception.GetBaseException();
-
-                                             if (token.IsCancellationRequested)
-                                                 throw new Exception("task has been cancelled.");
-
-                                             var temp = Interlocked.CompareExchange(ref OnMessageSent, null, null);
-                                             temp?.Invoke(this, new MessageSentEventArgs(message));
-                                         },
-                                         token);
-            }
-            else
-                task = Task.Delay(_breathTime, token);
-
-            return task;
+                                                   var temp1 = Interlocked.CompareExchange(ref OnMessageSent,
+                                                                                           null,
+                                                                                           null);
+                                                   temp1?.Invoke(this, new MessageSentEventArgs(message));
+                                               },
+                                               token)
+                       : Task.Delay(_breathTime, token);
         }
     }
 }
