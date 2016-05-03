@@ -51,7 +51,10 @@ namespace MiniMetrics
                                         if (_.Result.AddressList.Length == 0)
                                             throw new InvalidOperationException("unable to find an ip address for specified hostname");
 
-                                        return StartAsync(_.Result.AddressList[0], port);
+                                        return StartAsync(_.Result.AddressList[0],
+                                                          port,
+                                                          breathTime,
+                                                          encodingFactory);
                                     })
                       .Unwrap();
         }
