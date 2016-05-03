@@ -44,15 +44,14 @@ namespace MiniMetrics.Net
                 throw new ArgumentOutOfRangeException(nameof(hostname));
 
             return Dns.GetHostEntryAsync(hostname)
-                      .ContinueWith(_ =>
-                                    {
-                                        _.ThrowOnError();
+                      .ContinueWithOrThrow(_ =>
+                                           {
+                                               if (_.Result.AddressList.Length == 0)
+                                                   throw new InvalidOperationException("unable to find an ip address for specified hostname");
 
-                                        if (_.Result.AddressList.Length == 0)
-                                            throw new InvalidOperationException("unable to find an ip address for specified hostname");
-
-                                        return new OutbountChannelFactory(_.Result.AddressList[0], port);
-                                    })
+                                               return new OutbountChannelFactory(_.Result.AddressList[0],
+                                                                                 port);
+                                           })
                       .Result; // NOTE/ACK: it's not good blocking this call, but it should be
                                //           called just once and that keeps build interface
                                //           simpler.
@@ -70,7 +69,11 @@ namespace MiniMetrics.Net
 
         public virtual Task WriteAsync(Byte[] data, CancellationToken token)
         {
-            var stream = Client.GetStream(); // TODO: try catch
+            Stream stream;
+
+            try { stream = Client.GetStream(); }
+            catch (Exception exception) { return Task.FromException(exception); }
+
             return Task.Factory
                        .FromAsync(stream.BeginWrite,
                                   stream.EndWrite,
@@ -78,13 +81,7 @@ namespace MiniMetrics.Net
                                   0,
                                   data.Length,
                                   stream) // TODO: it shoud work by "chunks".
-                       .ContinueWith(_ =>
-                                     {
-                                         (_.AsyncState as Stream)?.Dispose();
-                                         stream.Dispose();
-                                         _.ThrowOnError();
-                                     },
-                                     token);
+                       .ContinueWithOrThrow(_ => (_.AsyncState as Stream)?.Dispose(), token);
         }
     }
 }

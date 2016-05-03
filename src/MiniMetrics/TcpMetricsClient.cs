@@ -33,13 +33,9 @@ namespace MiniMetrics
                                                       Func<Encoding> encodingFactory = null)
         {
             return channel.ConnectAsync()
-                          .ContinueWith(_ =>
-                                        {
-                                            _.ThrowOnError();
-                                            return (IMetricsClient)new TcpMetricsClient(channel,
-                                                                                        breathTime,
-                                                                                        encodingFactory ?? (() => new UTF8Encoding(true)));
-                                        });
+                          .ContinueWithOrThrow(_ => (IMetricsClient)new TcpMetricsClient(channel,
+                                                                                         breathTime,
+                                                                                         encodingFactory ?? (() => new UTF8Encoding(true))));
         }
 
         protected TcpMetricsClient(IOutbountChannel channel,
@@ -89,7 +85,7 @@ namespace MiniMetrics
 
         private void BackgroundWorkAsync(CancellationToken token)
         {
-            BuildTask(token).ContinueWith(_ => BackgroundWorkAsync(token), token);
+            BuildTask(token).ContinueWithOrThrow(_ => BackgroundWorkAsync(token), token);
         }
 
         private Task BuildTask(CancellationToken token)
@@ -98,20 +94,14 @@ namespace MiniMetrics
 
             return _messages.TryDequeue(out message)
                        ? _channel.WriteAsync(_encodingFactory().GetBytes(message), token)
-                                 .ContinueWith(_ =>
-                                               {
-                                                   _.ThrowOnError();
-
-                                                   if (token.IsCancellationRequested)
-                                                       throw new Exception("task has been cancelled.");
-
-                                                   var temp1 = Interlocked.CompareExchange(ref OnMessageSent,
-                                                                                           null,
-                                                                                           null);
-                                                   temp1?.Invoke(this, new MessageSentEventArgs(message));
-                                               },
-                                               token)
+                                 .ContinueWithOrThrow(_ => RaiseOnMessageSent(message), token)
                        : Task.Delay(_breathTime, token);
+        }
+
+        private void RaiseOnMessageSent(String message)
+        {
+            var temp1 = Interlocked.CompareExchange(ref OnMessageSent, null, null);
+            temp1?.Invoke(this, new MessageSentEventArgs(message));
         }
     }
 }

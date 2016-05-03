@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using MiniMetrics.Extensions;
 
 namespace MiniMetrics.Net
 {
@@ -24,7 +25,7 @@ namespace MiniMetrics.Net
             if (!Client.Connected)
                 // TODO: what about exposing a .NET event?
                 return Task.Delay(_recoverySlice, token)
-                           .ContinueWith(_ => ConnectAsync(), token)
+                           .ContinueWithOrThrow(_ => ConnectAsync(), token)
                            .Unwrap();
 
             return base.WriteAsync(data, token);
