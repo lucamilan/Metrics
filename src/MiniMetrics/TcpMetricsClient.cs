@@ -13,11 +13,12 @@ namespace MiniMetrics
     // TODO: autorecovery
     public class TcpMetricsClient : IMetricsClient
     {
-        private static readonly TimeSpan BreathTime = TimeSpan.FromSeconds(5d);
+        private static readonly TimeSpan DefaultBreathTime = TimeSpan.FromSeconds(5d);
 
         private readonly ConcurrentQueue<String> _messages = new ConcurrentQueue<String>();
         private readonly CancellationTokenSource _cts;
         private readonly TcpClient _client;
+        private readonly TimeSpan _breathTime;
         private readonly Func<Encoding> _encodingFactory;
 
         public event EventHandler<MessageSentEventArgs> OnMessageSent;
@@ -26,6 +27,14 @@ namespace MiniMetrics
 
         public static Task<IMetricsClient> StartAsync(String hostname,
                                                       Int32 port,
+                                                      Func<Encoding> encodingFactory = null)
+        {
+            return StartAsync(hostname, port, DefaultBreathTime, encodingFactory);
+        }
+
+        public static Task<IMetricsClient> StartAsync(String hostname,
+                                                      Int32 port,
+                                                      TimeSpan breathTime,
                                                       Func<Encoding> encodingFactory = null)
         {
             if (hostname == null)
@@ -51,6 +60,14 @@ namespace MiniMetrics
                                                       Int32 port,
                                                       Func<Encoding> encodingFactory = null)
         {
+            return StartAsync(address, port, DefaultBreathTime, encodingFactory);
+        }
+
+        public static Task<IMetricsClient> StartAsync(IPAddress address,
+                                                      Int32 port,
+                                                      TimeSpan breathTime,
+                                                      Func<Encoding> encodingFactory = null)
+        {
             var client = new TcpClient { ExclusiveAddressUse = false };
 
             return client.ConnectAsync(address, port)
@@ -58,13 +75,17 @@ namespace MiniMetrics
                                        {
                                            _.ThrowOnError();
                                            return (IMetricsClient)new TcpMetricsClient(client,
+                                                                                       breathTime,
                                                                                        encodingFactory ?? (() => new UTF8Encoding(true)));
                                        });
         }
 
-        private TcpMetricsClient(TcpClient client, Func<Encoding> encodingFactory)
+        private TcpMetricsClient(TcpClient client,
+                                 TimeSpan breathTime,
+                                 Func<Encoding> encodingFactory)
         {
             _client = client;
+            _breathTime = breathTime;
             _encodingFactory = encodingFactory;
             _cts = new CancellationTokenSource();
 
@@ -99,7 +120,7 @@ namespace MiniMetrics
             String message;
 
             if (!_messages.TryDequeue(out message))
-                return Task.Delay(BreathTime, token)
+                return Task.Delay(_breathTime, token)
                            .ContinueWith(_ => BackgroundWorkAsync(token), token)
                            .Unwrap();
 
