@@ -64,7 +64,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="TcpMetricsClientTests.cs" />
+    <Compile Include="TcpMetricsClient.cs" />
     <Compile Include="GraphiteFormatterTests.cs" />
     <Compile Include="MetricsTests.cs" />
     <Compile Include="MetricsOptionsTests.cs" />

@@ -1,34 +1,29 @@
 ﻿using System;
+using MiniMetrics.Extensions;
 
 namespace MiniMetrics
 {
     public class GraphiteFormatter
     {
-        public string Format(string key, object value)
+        public String Format(String key, Object value)
         {
-            if (string.IsNullOrWhiteSpace(key))
-            {
+            if (key == null)
                 throw new ArgumentNullException(nameof(key));
-            }
 
-            if (!IsNumber(value))
-            {
-                throw new InvalidCastException($"Value has wrong type {value?.GetType()}");
-            }
+            if (key.Length == 0)
+                throw new ArgumentOutOfRangeException(nameof(key));
 
-            return $"{Sanitize(key)} {value} { SystemClock.ToUnixTimestamp() }\n";
+            if (!value.IsNumber())
+                throw new InvalidCastException($"value has wrong type {value?.GetType()}");
+
+            return $"{Sanitize(key)} {value} { DateTimeExtensions.ToUnixTimestamp() }{Environment.NewLine}";
         }
 
-        private static string Sanitize(string key)
+        private static String Sanitize(String key)
         {
-            return key.Replace("-", "")
+            return key.Replace("-", String.Empty)
                       .Trim()
                       .ToLowerInvariant();
-        }
-
-        private static bool IsNumber(object value)
-        {
-            return value is int || value is long;
         }
     }
 }

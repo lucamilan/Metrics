@@ -3,24 +3,26 @@ using Xunit;
 
 namespace MiniMetrics.Tests
 {
+    using MiniMetrics.Extensions;
+
     public class GraphiteFormatterTests : IDisposable
     {
-        private GraphiteFormatter _sut;
+        private readonly GraphiteFormatter _sut;
 
         public GraphiteFormatterTests()
         {
-            SystemClock.Now = () => DateTime.Today;
+            DateTimeExtensions.Now = () => DateTime.Today;
             _sut = new GraphiteFormatter();
         }
 
         [Theory]
         [InlineData(100L)]
         [InlineData(100)]
-        public void OnlyIntegerAndLongTypesAreSupported(object value)
+        public void OnlyIntegerAndLongTypesAreSupported(Object value)
         {
-            string expected = $"test {value} { SystemClock.ToUnixTimestamp() }\n";
+            String expected = $"test {value} { DateTimeExtensions.ToUnixTimestamp() }{Environment.NewLine}";
 
-            string message = _sut.Format("test", value);
+            var message = _sut.Format("test", value);
 
             Assert.Equal(expected, message);
         }

@@ -6,14 +6,38 @@ namespace MiniMetrics
 {
     public class MetricsOptions
     {
-        public const int GraphiteDefaultServerPort = 2003;
+        public const Int32 GraphiteDefaultServerPort = 2003;
         private Func<IMetricsClient> metricsClient;
         private Func<IStopwatch> _stopwatch;
-        private Func<string, string> _keyBuilder;
+        private Func<String, String> _keyBuilder;
 
         public MetricsOptions()
         {
             Port = GraphiteDefaultServerPort;
+        }
+
+        public String HostName { get; set; }
+
+        public Int32 Port { get; set; }
+
+        public String Prefix { get; set; }
+
+        public Func<IStopwatch> Stopwatch
+        {
+            get { return _stopwatch ?? SimpleStopwatch.StartNew; }
+            set { _stopwatch = value; }
+        }
+
+        public Func<String, String> KeyBuilder
+        {
+            get { return _keyBuilder ?? (_ => _); }
+            set { _keyBuilder = value; }
+        }
+
+        public Func<IMetricsClient> MetricsClient
+        {
+            get { return metricsClient ?? (() => new NullMetricsClient()); }
+            set { metricsClient = value; }
         }
 
         public static MetricsOptions CreateFrom(NameValueCollection collection)
@@ -21,12 +45,12 @@ namespace MiniMetrics
             if (collection == null)
                 throw new ArgumentNullException(nameof(collection));
 
-            var options = new MetricsOptions();
-            options.HostName = collection["metrics:hostname"];
-            options.Port = TryParsePort(collection["metrics:port"]);
-            options.Prefix = collection["metrics:prefix"];
-
-            return options;
+            return new MetricsOptions
+            {
+                HostName = collection["metrics:hostname"],
+                Port = TryParsePort(collection["metrics:port"]),
+                Prefix = collection["metrics:prefix"]
+            };
         }
 
         public static MetricsOptions CreateFromConfig()
@@ -34,58 +58,11 @@ namespace MiniMetrics
             return CreateFrom(ConfigurationManager.AppSettings);
         }
 
-        public string HostName { get; set; }
-
-        public int Port { get; set; }
-
-        public string Prefix { get; set; }
-
-        public Func<IStopwatch> Stopwatch
+        private static Int32 TryParsePort(String value)
         {
-            get
-            {
-                return _stopwatch ?? new Func<IStopwatch>(() => SimpleStopwatch.StartNew());
-            }
-            set
-            {
-                _stopwatch = value;
-            }
-        }
+            Int32 port;
 
-        public Func<string, string> KeyBuilder
-        {
-            get
-            {
-                return _keyBuilder ?? new Func<string, string>(k => k);
-            }
-            set
-            {
-                _keyBuilder = value;
-            }
-        }
-
-        public Func<IMetricsClient> MetricsClient
-        {
-            get
-            {
-                return metricsClient ?? new Func<IMetricsClient>(() => TcpMetricsClient.CreateFrom(HostName,Port));
-            }
-            set
-            {
-                metricsClient = value;
-            }
-        }
-
-        private static int TryParsePort(string value)
-        {
-            int port;
-
-            if (int.TryParse(value, out port))
-            {
-                return port;
-            }
-
-            return GraphiteDefaultServerPort;
+            return Int32.TryParse(value, out port) ? port : GraphiteDefaultServerPort;
         }
     }
 }

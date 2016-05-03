@@ -42,13 +42,17 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Extensions\DateTimeExtensions.cs" />
+    <Compile Include="Extensions\ObjectExtensions.cs" />
+    <Compile Include="Extensions\TaskExtensions.cs" />
     <Compile Include="GraphiteFormatter.cs" />
+    <Compile Include="MessageSentEventArgs.cs" />
     <Compile Include="Metrics.cs" />
     <Compile Include="MetricsOptions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="MetricsClient.cs" />
     <Compile Include="StopwatchWrapper.cs" />
-    <Compile Include="SystemClock.cs" />
+    <Compile Include="TcpMetricsClient.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="config.xml" />
