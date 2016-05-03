@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -7,8 +8,6 @@ using MiniMetrics.Extensions;
 
 namespace MiniMetrics.Net
 {
-    using System.IO;
-
     public class OutbountChannel : IOutbountChannel
     {
         protected readonly TcpClient Client;

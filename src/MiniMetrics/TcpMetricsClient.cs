@@ -17,7 +17,7 @@ namespace MiniMetrics
 
         private readonly ConcurrentQueue<String> _messages = new ConcurrentQueue<String>();
         private readonly CancellationTokenSource _cts;
-        private readonly OutbountChannel _channel;
+        private readonly IOutbountChannel _channel;
         private readonly TimeSpan _breathTime;
         private readonly Func<Encoding> _encodingFactory;
 
@@ -84,7 +84,7 @@ namespace MiniMetrics
                                         });
         }
 
-        private TcpMetricsClient(OutbountChannel channel,
+        private TcpMetricsClient(IOutbountChannel channel,
                                  TimeSpan breathTime,
                                  Func<Encoding> encodingFactory)
         {
