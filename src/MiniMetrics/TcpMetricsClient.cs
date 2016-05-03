@@ -8,7 +8,6 @@ using MiniMetrics.Net;
 
 namespace MiniMetrics
 {
-    // TODO: autorecovery
     public class TcpMetricsClient : IMetricsClient
     {
         private static readonly TimeSpan DefaultBreathTime = TimeSpan.FromSeconds(5d);
@@ -43,9 +42,9 @@ namespace MiniMetrics
                                         });
         }
 
-        private TcpMetricsClient(IOutbountChannel channel,
-                                 TimeSpan breathTime,
-                                 Func<Encoding> encodingFactory)
+        protected TcpMetricsClient(IOutbountChannel channel,
+                                   TimeSpan breathTime,
+                                   Func<Encoding> encodingFactory)
         {
             _channel = channel;
             _breathTime = breathTime;
@@ -60,6 +59,11 @@ namespace MiniMetrics
             if (message == null)
                 throw new ArgumentNullException(nameof(message));
 
+            var i = Interlocked.CompareExchange(ref _disposed, 0, 0);
+
+            if (i == 1)
+                throw new ObjectDisposedException(GetType().Name);
+
             _messages.Enqueue(message);
         }
 
@@ -70,6 +74,11 @@ namespace MiniMetrics
             if (i == 1)
                 return;
 
+            DisposeInternal();
+        }
+
+        protected virtual void DisposeInternal()
+        {
             try
             {
                 _cts.Cancel();
