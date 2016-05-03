@@ -68,7 +68,7 @@ namespace MiniMetrics
         {
             get
             {
-                return metricsClient ?? new Func<IMetricsClient>(() => new NullMetricsClient());
+                return metricsClient ?? new Func<IMetricsClient>(() => TcpMetricsClient.CreateFrom(HostName,Port));
             }
             set
             {

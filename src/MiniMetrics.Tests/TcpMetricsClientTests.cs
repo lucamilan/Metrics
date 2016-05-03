@@ -5,17 +5,17 @@ using Xunit;
 
 namespace MiniMetrics.Tests
 {
-    public class TcpMetricsClient : IDisposable
+    public class TcpMetricsClientTests : IDisposable
     {
         private readonly TcpListener _tcpListener;
-        private readonly MiniMetrics.TcpMetricsClient _tcpMetricsClient;
+        private readonly TcpMetricsClient _tcpMetricsClient;
 
-        public TcpMetricsClient()
+        public TcpMetricsClientTests()
         {
             _tcpListener = new TcpListener(IPAddress.Loopback, MetricsOptions.GraphiteDefaultServerPort);
             _tcpListener.Start();
 
-            _tcpMetricsClient = new MiniMetrics.TcpMetricsClient(IPAddress.Loopback, MetricsOptions.GraphiteDefaultServerPort);
+            _tcpMetricsClient = new TcpMetricsClient(IPAddress.Loopback, MetricsOptions.GraphiteDefaultServerPort);
         }
 
         [Fact]

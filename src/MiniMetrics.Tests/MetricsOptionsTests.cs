@@ -19,9 +19,6 @@ namespace MiniMetrics.Tests
             Assert.Equal(_sut.HostName, null);
             Assert.Equal(_sut.Prefix, null);
             Assert.Equal(_sut.Port, MetricsOptions.GraphiteDefaultServerPort);
-            Assert.Equal(_sut.KeyBuilder.Invoke("test"), "test");
-            Assert.IsType<NullMetricsClient>(_sut.MetricsClient());
-            Assert.IsType<SimpleStopwatch>(_sut.Stopwatch());
         }
 
         [Fact]
