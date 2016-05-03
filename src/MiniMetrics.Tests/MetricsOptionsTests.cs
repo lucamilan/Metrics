@@ -27,10 +27,12 @@ namespace MiniMetrics.Tests
         [Fact]
         public void CreateFromCollection()
         {
-            NameValueCollection collection = new NameValueCollection();
-            collection["metrics:hostname"] = "localhost";
-            collection["metrics:port"] = "8253";
-            collection["metrics:prefix"] = "test";
+            var collection = new NameValueCollection
+                                 {
+                                     ["metrics:hostname"] = "localhost",
+                                     ["metrics:port"] = "8253",
+                                     ["metrics:prefix"] = "test"
+                                 };
 
             _sut = MetricsOptions.CreateFrom(collection);
 
@@ -54,12 +56,9 @@ namespace MiniMetrics.Tests
         {
             var expected = $"test.{Environment.MachineName}.component.mystats";
 
-            _sut.KeyBuilder = (k) =>
-            {
-                return $"test.{Environment.MachineName}.{k}";
-            };
+            _sut.KeyBuilder = _ => $"test.{Environment.MachineName}.{_}";
 
-            string key = _sut.KeyBuilder.Invoke("component.mystats");
+            var key = _sut.KeyBuilder.Invoke("component.mystats");
 
             Assert.Equal(expected, key);
         }
@@ -67,11 +66,11 @@ namespace MiniMetrics.Tests
         [Fact]
         public void OverrideStopwatch()
         {
-            const long expected = 0;
+            const Int64 expected = 0;
 
             _sut.Stopwatch = () => new FakeStopwatch();
 
-            long elapsedMilliseconds = _sut.Stopwatch.Invoke().ElapsedMilliseconds;
+            var elapsedMilliseconds = _sut.Stopwatch.Invoke().ElapsedMilliseconds;
 
             Assert.Equal(expected, elapsedMilliseconds);
         }
@@ -79,21 +78,9 @@ namespace MiniMetrics.Tests
 
     internal class FakeStopwatch : IStopwatch
     {
-        public long ElapsedMilliseconds
-        {
-            get
-            {
-                return 0L;
-            }
-        }
+        public Int64 ElapsedMilliseconds => 0L;
 
-        public long ElapsedTicks
-        {
-            get
-            {
-                return 0L;
-            }
-        }
+        public Int64 ElapsedTicks => 0L;
 
         public void Start()
         {

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 
 namespace MiniMetrics
 {
@@ -9,30 +10,24 @@ namespace MiniMetrics
 
         public static void StartFromConfig()
         {
-            var options = MetricsOptions.CreateFromConfig();
-
-            Start(options);
+            Start(MetricsOptions.CreateFromConfig());
         }
 
         public static void Start(MetricsOptions options)
         {
             if (options == null)
-            {
                 throw new ArgumentNullException(nameof(options));
-            }
 
             Options = options;
 
             Stop();
 
-            var metricsClient = options.MetricsClient();
+            var client = options.MetricsClient();
 
-            if (metricsClient == null)
-            {
+            if (client == null)
                 throw new InvalidOperationException("MetricsClient is null");
-            }
 
-            MetricsClient = metricsClient;
+            MetricsClient = client;
         }
 
         public static void Stop()
@@ -40,30 +35,27 @@ namespace MiniMetrics
             MetricsClient.Dispose();
         }
 
-        public static void Report(string key, long value)
+        public static void Report(String key, Int64 value)
         {
             PrepareAndSend(key, value);
         }
 
-        public static void Report(string key, int value)
+        public static void Report(String key, Int32 value)
         {
             PrepareAndSend(key, value);
         }
 
-        public static IDisposable ReportTimer(string key)
+        public static IDisposable ReportTimer(String key)
         {
             return new Timer(key, Options.Stopwatch());
         }
 
-        private static void PrepareAndSend(string key, object value)
+        private static void PrepareAndSend(String key, Object value)
         {
             if (key == null)
-            {
                 throw new ArgumentNullException(nameof(key));
-            }
 
             var namespacedKey = Options.KeyBuilder(key);
-
             var message = new GraphiteFormatter().Format(namespacedKey, value);
 
             MetricsClient.Send(message);
@@ -71,11 +63,12 @@ namespace MiniMetrics
 
         private class Timer : IDisposable
         {
-            private readonly string _key;
+            private readonly String _key;
             private readonly IStopwatch _stopWatch;
-            private bool _disposed;
 
-            public Timer(string key, IStopwatch stopWatch)
+            private Int32 _disposed;
+
+            public Timer(String key, IStopwatch stopWatch)
             {
                 _key = key;
                 _stopWatch = stopWatch;
@@ -83,12 +76,13 @@ namespace MiniMetrics
 
             public void Dispose()
             {
-                if (!_disposed)
-                {
-                    _disposed = true;
-                    _stopWatch.Stop();
-                    Report(_key, _stopWatch.ElapsedMilliseconds);
-                }
+                var i = Interlocked.CompareExchange(ref _disposed, 1, 0);
+
+                if (i == 0)
+                    return;
+
+                _stopWatch.Stop();
+                Report(_key, _stopWatch.ElapsedMilliseconds);
             }
         }
     }

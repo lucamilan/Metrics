@@ -5,9 +5,9 @@ namespace MiniMetrics
 {
     public interface IStopwatch
     {
-        long ElapsedTicks { get; }
+        Int64 ElapsedTicks { get; }
 
-        long ElapsedMilliseconds { get; }
+        Int64 ElapsedMilliseconds { get; }
 
         void Start();
 
@@ -21,22 +21,14 @@ namespace MiniMetrics
         public SimpleStopwatch(Stopwatch watch)
         {
             if (watch == null)
-            {
                 throw new ArgumentNullException(nameof(watch));
-            }
 
             _watch = watch;
         }
 
-        public long ElapsedTicks
-        {
-            get { return _watch.ElapsedTicks; }
-        }
+        public Int64 ElapsedTicks => _watch.ElapsedTicks;
 
-        public long ElapsedMilliseconds
-        {
-            get { return _watch.ElapsedMilliseconds; }
-        }
+        public Int64 ElapsedMilliseconds => _watch.ElapsedMilliseconds;
 
         public static SimpleStopwatch StartNew()
         {
