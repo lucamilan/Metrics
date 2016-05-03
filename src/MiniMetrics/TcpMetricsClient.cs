@@ -107,7 +107,7 @@ namespace MiniMetrics
         {
             var i = Interlocked.CompareExchange(ref _disposed, 1, 0);
 
-            if (i == 0)
+            if (i == 1)
                 return;
 
             try
