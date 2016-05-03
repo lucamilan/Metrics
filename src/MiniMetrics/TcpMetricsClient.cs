@@ -131,7 +131,7 @@ namespace MiniMetrics
                 var stream = _client.GetStream();
 
                 task = Task.Factory
-                           .FromAsync(stream.BeginWrite, stream.EndWrite, bytes, 0, bytes.Length, null)
+                           .FromAsync(stream.BeginWrite, stream.EndWrite, bytes, 0, bytes.Length, null) // TODO: it shoud work by "chunks".
                            .ContinueWith(_ =>
                                          {
                                              stream.Dispose();
