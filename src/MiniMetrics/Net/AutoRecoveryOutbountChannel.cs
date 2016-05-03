@@ -10,11 +10,6 @@ namespace MiniMetrics.Net
     {
         private readonly TimeSpan _recoverySlice;
 
-        public AutoRecoveryOutbountChannel(TcpClient client, IPAddress address, Int32 port)
-            : this(client, address, port, TimeSpan.FromSeconds(5d))
-        {
-        }
-
         public AutoRecoveryOutbountChannel(TcpClient client,
                                            IPAddress address,
                                            Int32 port,

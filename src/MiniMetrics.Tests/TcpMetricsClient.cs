@@ -2,6 +2,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using MiniMetrics.Net;
 using Xunit;
 
 namespace MiniMetrics.Tests
@@ -24,7 +25,8 @@ namespace MiniMetrics.Tests
             var @event = new ManualResetEvent(false);
             var result = string.Empty;
 
-            MiniMetrics.TcpMetricsClient.StartAsync(IPAddress.Loopback, MetricsOptions.GraphiteDefaultServerPort)
+            MiniMetrics.TcpMetricsClient.StartAsync(OutbountChannel.From(IPAddress.Loopback, MetricsOptions.GraphiteDefaultServerPort)
+                                                                   .BuildAutoRecoverable())
                                         .ContinueWith(_ =>
                                                       {
                                                           _.Result.OnMessageSent += (sender, args) =>

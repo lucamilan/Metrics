@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Concurrent;
-using System.Net;
-using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,55 +23,16 @@ namespace MiniMetrics
 
         private Int32 _disposed;
 
-        public static Task<IMetricsClient> StartAsync(String hostname,
-                                                      Int32 port,
+        public static Task<IMetricsClient> StartAsync(IOutbountChannel channel,
                                                       Func<Encoding> encodingFactory = null)
         {
-            return StartAsync(hostname, port, DefaultBreathTime, encodingFactory);
+            return StartAsync(channel, DefaultBreathTime, encodingFactory);
         }
 
-        public static Task<IMetricsClient> StartAsync(String hostname,
-                                                      Int32 port,
+        public static Task<IMetricsClient> StartAsync(IOutbountChannel channel,
                                                       TimeSpan breathTime,
                                                       Func<Encoding> encodingFactory = null)
         {
-            if (hostname == null)
-                throw new ArgumentNullException(nameof(hostname));
-
-            if (hostname.Length == 0)
-                throw new ArgumentOutOfRangeException(nameof(hostname));
-
-            return Dns.GetHostEntryAsync(hostname)
-                      .ContinueWith(_ =>
-                                    {
-                                        _.ThrowOnError();
-
-                                        if (_.Result.AddressList.Length == 0)
-                                            throw new InvalidOperationException("unable to find an ip address for specified hostname");
-
-                                        return StartAsync(_.Result.AddressList[0],
-                                                          port,
-                                                          breathTime,
-                                                          encodingFactory);
-                                    })
-                      .Unwrap();
-        }
-
-        public static Task<IMetricsClient> StartAsync(IPAddress address,
-                                                      Int32 port,
-                                                      Func<Encoding> encodingFactory = null)
-        {
-            return StartAsync(address, port, DefaultBreathTime, encodingFactory);
-        }
-
-        public static Task<IMetricsClient> StartAsync(IPAddress address,
-                                                      Int32 port,
-                                                      TimeSpan breathTime,
-                                                      Func<Encoding> encodingFactory = null)
-        {
-            var channel = new OutbountChannel(new TcpClient { ExclusiveAddressUse = false },
-                                              address,
-                                              port);
             return channel.ConnectAsync()
                           .ContinueWith(_ =>
                                         {

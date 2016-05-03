@@ -27,6 +27,37 @@ namespace MiniMetrics.Net
             _port = port;
         }
 
+        public static OutbountChannelFactory From(IPAddress address, Int32 port)
+        {
+            if (address == null)
+                throw new ArgumentNullException(nameof(address));
+
+            return new OutbountChannelFactory(address, port);
+        }
+
+        public static OutbountChannelFactory From(String hostname, Int32 port)
+        {
+            if (hostname == null)
+                throw new ArgumentNullException(nameof(hostname));
+
+            if (hostname.Length == 0)
+                throw new ArgumentOutOfRangeException(nameof(hostname));
+
+            return Dns.GetHostEntryAsync(hostname)
+                      .ContinueWith(_ =>
+                                    {
+                                        _.ThrowOnError();
+
+                                        if (_.Result.AddressList.Length == 0)
+                                            throw new InvalidOperationException("unable to find an ip address for specified hostname");
+
+                                        return new OutbountChannelFactory(_.Result.AddressList[0], port);
+                                    })
+                      .Result; // NOTE/ACK: it's not good blocking this call, but it should be
+                               //           called just once and that keeps build interface
+                               //           simpler.
+        }
+
         public Task ConnectAsync()
         {
             return Client.ConnectAsync(_address, _port);

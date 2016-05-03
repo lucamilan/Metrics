@@ -52,6 +52,7 @@
     <Compile Include="Net\AutoRecoveryOutbountChannel.cs" />
     <Compile Include="Net\IOutbountChannel.cs" />
     <Compile Include="Net\OutbountChannel.cs" />
+    <Compile Include="Net\OutbountChannelFactory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="MetricsClient.cs" />
     <Compile Include="StopwatchWrapper.cs" />
