@@ -6,7 +6,8 @@ namespace MiniMetrics.Extensions
     {
         public static Boolean IsNumber(this Object value)
         {
-            return value is Int32 || value is Int64;
+            // TODO: what about floating point numbers?
+            return value is Int16 || value is Int32 || value is Int64;
         }
     }
 }
