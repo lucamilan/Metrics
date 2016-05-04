@@ -12,10 +12,12 @@ namespace MiniMetrics
     {
         private static readonly TimeSpan DefaultBreathTime = TimeSpan.FromSeconds(5d);
 
-        private readonly ConcurrentQueue<String> _messages = new ConcurrentQueue<String>();
+        protected readonly ConcurrentQueue<String> Queue = new ConcurrentQueue<String>();
+
         private readonly CancellationTokenSource _cts;
         private readonly IOutbountChannel _channel;
         private readonly TimeSpan _breathTime;
+        private readonly IFormatter _formatter;
         private readonly Func<Encoding> _encodingFactory;
 
         public event EventHandler<MessageSentEventArgs> OnMessageSent;
@@ -23,44 +25,49 @@ namespace MiniMetrics
         private Int32 _disposed;
 
         public static Task<IMetricsClient> StartAsync(IOutbountChannel channel,
+                                                      IFormatter formatter = null,
                                                       Func<Encoding> encodingFactory = null)
         {
-            return StartAsync(channel, DefaultBreathTime, encodingFactory);
+            return StartAsync(channel, DefaultBreathTime, formatter, encodingFactory);
         }
 
         public static Task<IMetricsClient> StartAsync(IOutbountChannel channel,
                                                       TimeSpan breathTime,
+                                                      IFormatter formatter = null,
                                                       Func<Encoding> encodingFactory = null)
         {
             return channel.ConnectAsync()
                           .ContinueWithOrThrow(_ => (IMetricsClient)new TcpMetricsClient(channel,
                                                                                          breathTime,
+                                                                                         formatter ?? new DefaultFormatter(),
                                                                                          encodingFactory ?? (() => new UTF8Encoding(true))));
         }
 
         protected TcpMetricsClient(IOutbountChannel channel,
                                    TimeSpan breathTime,
+                                   IFormatter formatter,
                                    Func<Encoding> encodingFactory)
         {
             _channel = channel;
             _breathTime = breathTime;
+            _formatter = formatter;
             _encodingFactory = encodingFactory;
             _cts = new CancellationTokenSource();
 
             BackgroundWorkAsync(_cts.Token);
         }
 
-        public void Send(String message)
+        public void Send<TValue>(String key, TValue value)
         {
-            if (message == null)
-                throw new ArgumentNullException(nameof(message));
+            if (key == null)
+                throw new ArgumentNullException(nameof(key));
 
             var i = Interlocked.CompareExchange(ref _disposed, 0, 0);
 
             if (i == 1)
                 throw new ObjectDisposedException(GetType().Name);
 
-            _messages.Enqueue(message);
+            Queue.Enqueue(_formatter.Format(key, value));
         }
 
         public void Dispose()
@@ -92,7 +99,7 @@ namespace MiniMetrics
         {
             String message;
 
-            return _messages.TryDequeue(out message)
+            return Queue.TryDequeue(out message)
                        ? _channel.WriteAsync(_encodingFactory().GetBytes(message), token)
                                  .ContinueWithOrThrow(_ => RaiseOnMessageSent(message), token)
                        : Task.Delay(_breathTime, token);

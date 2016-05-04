@@ -1,74 +1,49 @@
 ﻿using System;
+using MiniMetrics.Extensions;
 using Moq;
 using Xunit;
 
 namespace MiniMetrics.Tests
 {
-    public class MetricsTests : IDisposable
+    public class MetricsTests
     {
-        private readonly Mock<IMetricsClient> _client;
-        private readonly Mock<IStopwatch> _stopwatch;
-
-        public MetricsTests()
-        {
-            var option = new MetricsOptions();
-
-            _client = new Mock<IMetricsClient>();
-            _stopwatch = new Mock<IStopwatch>();
-
-            option.Stopwatch = () => _stopwatch.Object;
-            option.MetricsClient = () => _client.Object;
-
-            Metrics.Start(option);
-        }
-
-        [Fact]
-        public void ReportIntValue()
-        {
-            const String key = "test";
-            const Int32 value = 100;
-
-            var expected = new GraphiteFormatter().Format(key, value);
-
-            Metrics.Report(key, value);
-
-            _client.Verify(_ => _.Send(expected), Times.Once);
-        }
-
         [Fact]
         public void ReportLongValue()
         {
+            const String expected = "result";
             const String key = "test";
             const Int64 value = 4294967296;
 
-            var expected = new GraphiteFormatter().Format(key, value);
-
-            Metrics.Report(key, value);
-
-            _client.Verify(_ => _.Send(expected), Times.Once);
+            using (var client = TcpMetricsClientWrapper.Stub(formatter: StubFormatter(key, value, expected).Object))
+            {
+                client.Send(key, value);
+                Assert.Equal(expected, client.Dequeue());
+            }
         }
 
         [Fact]
         public void ReportTimer()
         {
             const String key = "test";
-            const Int64 value = 4294967296;
+            const Int64 value = 4294967296L;
+            var expected = key + value;
 
-            var expected = new GraphiteFormatter().Format(key, value);
-
+            var _stopwatch = new Mock<IStopwatch>();
             _stopwatch.SetupGet(_ => _.ElapsedMilliseconds).Returns(value);
 
-            using (Metrics.ReportTimer(key))
+            using (var client = TcpMetricsClientWrapper.Stub(formatter: StubFormatter(key, value, expected).Object))
             {
-                // do something
-            }
+                using (client.ReportTimer(key, () => _stopwatch.Object)) { }
 
-            _client.Verify(_ => _.Send(expected), Times.Once);
+                Assert.Equal(expected, client.Dequeue());
+            }
         }
 
-        public void Dispose()
+        private static Mock<IFormatter> StubFormatter(String key, Int64 value, String expected)
         {
-            Metrics.Stop();
+            var formatter = new Mock<IFormatter>();
+            formatter.Setup(_ => _.Format(key, value)).Returns(expected);
+            return formatter;
         }
     }
 }

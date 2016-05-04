@@ -7,12 +7,12 @@ namespace MiniMetrics.Tests
 
     public class GraphiteFormatterTests : IDisposable
     {
-        private readonly GraphiteFormatter _sut;
+        private readonly DefaultFormatter _sut;
 
         public GraphiteFormatterTests()
         {
             DateTimeExtensions.Now = () => DateTime.Today;
-            _sut = new GraphiteFormatter();
+            _sut = new DefaultFormatter();
         }
 
         [Theory]

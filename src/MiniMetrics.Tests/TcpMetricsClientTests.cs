@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 using MiniMetrics.Net;
+using Moq;
 using Xunit;
 
 namespace MiniMetrics.Tests
@@ -21,36 +21,42 @@ namespace MiniMetrics.Tests
         [Fact]
         public void SendMessage()
         {
-            const String message = "test";
+            const String key = "test";
+            const Int32 value = 2;
+            const String expected = "result";
 
             var @event = new ManualResetEvent(false);
             String result = null;
 
-            TcpMetricsClient.StartAsync(OutbountChannel.From(IPAddress.Loopback, MetricsOptions.GraphiteDefaultServerPort)
-                                                       .BuildAutoRecoverable())
+            var formatter = new Mock<IFormatter>();
+            formatter.Setup(_ => _.Format(key, value)).Returns(expected);
+            TcpMetricsClient.StartAsync(OutbountChannel.From(IPAddress.Loopback,
+                                                             MetricsOptions.GraphiteDefaultServerPort)
+                                                       .BuildAutoRecoverable(),
+                                        formatter.Object)
                             .ContinueWith(_ =>
                                           {
                                               _.Result.OnMessageSent += (sender, args) =>
                                                                         {
-                                                                            result = message;
+                                                                            result = args.Message;
                                                                             @event.Set();
                                                                         };
-                                              _.Result.Send(message);
+                                              _.Result.Send(key, value);
                                           });
 
             if (!@event.WaitOne(TimeSpan.FromSeconds(10d)))
                 throw new Exception("timed out");
 
-            Assert.Equal(message, result);
+            Assert.Equal(expected, result);
         }
 
         [Fact]
         public void SendingAfterDisposing()
         {
-            var wrapper = new TcpMetricsClientWrapper(null, TimeSpan.FromMilliseconds(-1d), null);
-            wrapper.Send("a-message");
+            var wrapper = TcpMetricsClientWrapper.Stub();
+            wrapper.Send("key_1", "value_1");
             wrapper.Dispose();
-            Assert.Throws<ObjectDisposedException>(() => wrapper.Send("another-message"));
+            Assert.Throws<ObjectDisposedException>(() => wrapper.Send("key_2", "value_2"));
             wrapper.Dispose();
             Assert.Equal(1, wrapper.DisposeCount);
         }
@@ -58,25 +64,6 @@ namespace MiniMetrics.Tests
         public void Dispose()
         {
             _listener.Stop();
-        }
-
-        internal class TcpMetricsClientWrapper : TcpMetricsClient
-        {
-            internal Int32 DisposeCount;
-
-            public TcpMetricsClientWrapper(IOutbountChannel channel,
-                                           TimeSpan breathTime,
-                                           Func<Encoding> encodingFactory)
-                : base(channel, breathTime, encodingFactory)
-            {
-            }
-
-            protected override void DisposeInternal()
-            {
-                base.DisposeInternal();
-
-                DisposeCount++;
-            }
         }
     }
 }

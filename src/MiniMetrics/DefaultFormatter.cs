@@ -3,9 +3,9 @@ using MiniMetrics.Extensions;
 
 namespace MiniMetrics
 {
-    public class GraphiteFormatter
+    public class DefaultFormatter : IFormatter
     {
-        public String Format(String key, Object value)
+        public String Format<TValue>(String key, TValue value)
         {
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
@@ -23,7 +23,12 @@ namespace MiniMetrics
         {
             return key.Replace("-", String.Empty)
                       .Trim()
-                      .ToLowerInvariant();
+                      .ToLowerInvariant(); // TODO
         }
+    }
+
+    public interface IFormatter
+    {
+        String Format<TValue>(String key, TValue value);
     }
 }

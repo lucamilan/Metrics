@@ -7,7 +7,8 @@ namespace MiniMetrics
     public class MetricsOptions
     {
         public const Int32 GraphiteDefaultServerPort = 2003;
-        private Func<IMetricsClient> metricsClient;
+
+        private Func<IMetricsClient> _metricsClient;
         private Func<IStopwatch> _stopwatch;
         private Func<String, String> _keyBuilder;
 
@@ -36,8 +37,8 @@ namespace MiniMetrics
 
         public Func<IMetricsClient> MetricsClient
         {
-            get { return metricsClient ?? (() => new NullMetricsClient()); }
-            set { metricsClient = value; }
+            get { return _metricsClient ?? (() => new NullMetricsClient()); }
+            set { _metricsClient = value; }
         }
 
         public static MetricsOptions CreateFrom(NameValueCollection collection)
@@ -46,11 +47,11 @@ namespace MiniMetrics
                 throw new ArgumentNullException(nameof(collection));
 
             return new MetricsOptions
-            {
-                HostName = collection["metrics:hostname"],
-                Port = TryParsePort(collection["metrics:port"]),
-                Prefix = collection["metrics:prefix"]
-            };
+                       {
+                           HostName = collection["metrics:hostname"],
+                           Port = TryParsePort(collection["metrics:port"]),
+                           Prefix = collection["metrics:prefix"]
+                       };
         }
 
         public static MetricsOptions CreateFromConfig()
