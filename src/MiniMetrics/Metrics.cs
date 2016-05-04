@@ -3,7 +3,6 @@ using MiniMetrics.Extensions;
 
 namespace MiniMetrics
 {
-    // TODO: sync
     public class Metrics
     {
         private static IMetricsClient MetricsClient = new NullMetricsClient();

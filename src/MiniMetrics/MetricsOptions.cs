@@ -56,7 +56,12 @@ namespace MiniMetrics
 
         public static MetricsOptions CreateFromConfig()
         {
-            return CreateFrom(ConfigurationManager.AppSettings);
+            return CreateFromConfig(ConfigurationManager.AppSettings);
+        }
+
+        public static MetricsOptions CreateFromConfig(NameValueCollection settings)
+        {
+            return CreateFrom(settings);
         }
 
         private static Int32 TryParsePort(String value)
