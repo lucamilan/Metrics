@@ -17,26 +17,26 @@ namespace MiniMetrics.Extensions
 
         public static IDisposable ReportTimer(this IMetricsClient client,
                                               String key,
-                                              Func<IStopwatch> stopwatch = null)
+                                              Func<IStopwatch> stopwatchFactory = null)
         {
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
 
-            return new Timer(key, (stopwatch ?? SimpleStopwatch.StartNew)(), client.Send);
+            return new Timer(key, (stopwatchFactory ?? SimpleStopwatch.StartNew)(), client.Send);
         }
 
         private class Timer : IDisposable
         {
             private readonly String _key;
-            private readonly IStopwatch _stopWatch;
+            private readonly IStopwatch _stopwatchFactory;
             private readonly Action<String, Int64> _action;
 
             private Int32 _disposed;
 
-            public Timer(String key, IStopwatch stopWatch, Action<String, Int64> action)
+            public Timer(String key, IStopwatch stopwatchFactory, Action<String, Int64> action)
             {
                 _key = key;
-                _stopWatch = stopWatch;
+                _stopwatchFactory = stopwatchFactory;
                 _action = action;
             }
 
@@ -47,8 +47,8 @@ namespace MiniMetrics.Extensions
                 if (i == 1)
                     return;
 
-                _stopWatch.Stop();
-                _action(_key, _stopWatch.ElapsedMilliseconds);
+                _stopwatchFactory.Stop();
+                _action(_key, _stopwatchFactory.ElapsedMilliseconds);
             }
         }
     }

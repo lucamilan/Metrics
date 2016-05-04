@@ -1,12 +1,12 @@
 ﻿using System;
 using MiniMetrics.Extensions;
+using MiniMetrics.Net;
 
 namespace MiniMetrics
 {
     public class Metrics
     {
         private static IMetricsClient MetricsClient = new NullMetricsClient();
-        private static MetricsOptions Options;
 
         private static readonly Object Sync = new Object();
 
@@ -22,32 +22,67 @@ namespace MiniMetrics
 
             lock (Sync)
             {
-                Options = options;
-                Stop();
+                StopInternal();
+                TcpMetricsClient.StartAsync(OutbountChannel.From(options.HostName, options.Port).Build())
+                                .ContinueWith(_ => MetricsClient = _.Result)
+                                .Wait();
+            }
+        }
 
-                var client = options.MetricsClient();
+        public static void StartAutoRecoverable(MetricsOptions options, TimeSpan recoverySlice)
+        {
+            if (options == null)
+                throw new ArgumentNullException(nameof(options));
 
-                if (client == null)
-                    throw new InvalidOperationException("metrics client is null");
+            lock (Sync)
+            {
+                if (MetricsClient != null)
+                    return;
 
-                MetricsClient = client;
+                StopInternal();
+                TcpMetricsClient.StartAsync(OutbountChannel.From(options.HostName, options.Port).BuildAutoRecoverable(recoverySlice))
+                                .ContinueWith(_ => MetricsClient = _.Result)
+                                .Wait();
             }
         }
 
         public static void Stop()
         {
             lock (Sync)
-                MetricsClient.Dispose();
+            {
+                if (MetricsClient == null)
+                    return;
+
+                StopInternal();
+            }
         }
 
         public static void Report<TValue>(String key, TValue value)
         {
-            MetricsClient.Report(Options.KeyBuilder(key), value);
+            lock (Sync)
+            {
+                if (MetricsClient == null)
+                    throw new InvalidOperationException("client has to be started by calling 'Start' method");
+
+                MetricsClient.Report(key, value);
+            }
         }
 
-        public static IDisposable ReportTimer(String key)
+        public static IDisposable ReportTimer(String key, Func<IStopwatch> stopWatchFactory = null)
         {
-            return MetricsClient.ReportTimer(Options.KeyBuilder(key), Options.Stopwatch);
+            lock (Sync)
+            {
+                if (MetricsClient == null)
+                    throw new InvalidOperationException("client has to be started by calling 'Start' method");
+
+                return MetricsClient.ReportTimer(key, stopWatchFactory ?? SimpleStopwatch.StartNew);
+            }
+        }
+
+        private static void StopInternal()
+        {
+            MetricsClient?.Dispose();
+            MetricsClient = null;
         }
     }
 }

@@ -9,8 +9,6 @@ namespace MiniMetrics
         public const Int32 GraphiteDefaultServerPort = 2003;
 
         private Func<IMetricsClient> _metricsClient;
-        private Func<IStopwatch> _stopwatch;
-        private Func<String, String> _keyBuilder;
 
         public MetricsOptions()
         {
@@ -20,20 +18,6 @@ namespace MiniMetrics
         public String HostName { get; set; }
 
         public Int32 Port { get; set; }
-
-        public String Prefix { get; set; }
-
-        public Func<IStopwatch> Stopwatch
-        {
-            get { return _stopwatch ?? SimpleStopwatch.StartNew; }
-            set { _stopwatch = value; }
-        }
-
-        public Func<String, String> KeyBuilder
-        {
-            get { return _keyBuilder ?? (_ => _); }
-            set { _keyBuilder = value; }
-        }
 
         public Func<IMetricsClient> MetricsClient
         {
@@ -49,8 +33,7 @@ namespace MiniMetrics
             return new MetricsOptions
                        {
                            HostName = collection["metrics:hostname"],
-                           Port = TryParsePort(collection["metrics:port"]),
-                           Prefix = collection["metrics:prefix"]
+                           Port = TryParsePort(collection["metrics:port"])
                        };
         }
 

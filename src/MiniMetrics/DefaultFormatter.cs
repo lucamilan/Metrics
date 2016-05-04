@@ -5,6 +5,18 @@ namespace MiniMetrics
 {
     public class DefaultFormatter : IFormatter
     {
+        private readonly Func<String, String> _keyBuilder;
+
+        public DefaultFormatter()
+            : this(null)
+        {
+        }
+
+        public DefaultFormatter(Func<String, String> keyBuilder)
+        {
+            _keyBuilder = keyBuilder ?? (_ => _);
+        }
+
         public String Format<TValue>(String key, TValue value)
         {
             if (key == null)
@@ -16,7 +28,7 @@ namespace MiniMetrics
             if (!value.IsNumber())
                 throw new InvalidCastException($"value has wrong type {value?.GetType()}");
 
-            return $"{Sanitize(key)} {value} { DateTimeExtensions.ToUnixTimestamp() }{Environment.NewLine}";
+            return $"{Sanitize(_keyBuilder(key))} {value} { DateTimeExtensions.ToUnixTimestamp() }{Environment.NewLine}";
         }
 
         private static String Sanitize(String key)
