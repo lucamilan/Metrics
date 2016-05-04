@@ -9,6 +9,8 @@ namespace MiniMetrics
         private static IMetricsClient MetricsClient = new NullMetricsClient();
         private static MetricsOptions Options;
 
+        private static readonly Object Sync = new Object();
+
         public static void StartFromConfig()
         {
             Start(MetricsOptions.CreateFromConfig());
@@ -19,20 +21,24 @@ namespace MiniMetrics
             if (options == null)
                 throw new ArgumentNullException(nameof(options));
 
-            Options = options;
-            Stop();
+            lock (Sync)
+            {
+                Options = options;
+                Stop();
 
-            var client = options.MetricsClient();
+                var client = options.MetricsClient();
 
-            if (client == null)
-                throw new InvalidOperationException("metrics client is null");
+                if (client == null)
+                    throw new InvalidOperationException("metrics client is null");
 
-            MetricsClient = client;
+                MetricsClient = client;
+            }
         }
 
         public static void Stop()
         {
-            MetricsClient.Dispose();
+            lock (Sync)
+                MetricsClient.Dispose();
         }
 
         public static void Report<TValue>(String key, TValue value)
