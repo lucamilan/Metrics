@@ -10,6 +10,8 @@ namespace MiniMetrics.Net
 {
     public class OutbountChannel : IOutbountChannel
     {
+        private const Int32 BufferSize = 4096;
+
         protected readonly TcpClient Client;
         private readonly IPAddress _address;
         private readonly Int32 _port;
@@ -74,14 +76,29 @@ namespace MiniMetrics.Net
             try { stream = Client.GetStream(); }
             catch (Exception exception) { return Task.FromException(exception); }
 
+            return WriteAsync(stream, 0, data);
+        }
+
+        private static Task WriteAsync(Stream stream, Int32 offset, Byte[] data)
+        {
+            var diff = data.Length - offset;
+            var size = diff <= BufferSize ? diff : BufferSize;
+            var buffer = new Byte[size];
+            Buffer.BlockCopy(data, offset, buffer, 0, buffer.Length);
+
             return Task.Factory
-                       .FromAsync(stream.BeginWrite,
-                                  stream.EndWrite,
-                                  data,
-                                  0,
-                                  data.Length,
-                                  stream) // TODO: it shoud work by "chunks".
-                       .ContinueWithOrThrow(_ => (_.AsyncState as Stream)?.Dispose(), token);
+                       .FromAsync(stream.BeginWrite, stream.EndWrite, buffer, 0, buffer.Length, null)
+                       .ContinueWithOrThrow(_ =>
+                                            {
+                                                if (data.Length - offset - size == 0)
+                                                {
+                                                    stream.Dispose();
+                                                    return _;
+                                                }
+
+                                                return WriteAsync(stream, offset + BufferSize, data);
+                                            })
+                       .Unwrap();
         }
     }
 }
