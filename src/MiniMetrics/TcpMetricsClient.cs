@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using MiniMetrics.Extensions;
+using MiniMetrics.Formatting;
 using MiniMetrics.Net;
 
 namespace MiniMetrics
@@ -57,7 +58,25 @@ namespace MiniMetrics
             BackgroundWorkAsync(_cts.Token);
         }
 
-        public void Send<TValue>(String key, TValue value)
+        public void Send(String key, Int16 value)
+        {
+            PreCheck(key);
+            Queue.Enqueue(_formatter.Format(key, value));
+        }
+
+        public void Send(String key, Int32 value)
+        {
+            PreCheck(key);
+            Queue.Enqueue(_formatter.Format(key, value));
+        }
+
+        public void Send(String key, Int64 value)
+        {
+            PreCheck(key);
+            Queue.Enqueue(_formatter.Format(key, value));
+        }
+
+        private void PreCheck(String key)
         {
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
@@ -66,8 +85,6 @@ namespace MiniMetrics
 
             if (i == 1)
                 throw new ObjectDisposedException(GetType().Name);
-
-            Queue.Enqueue(_formatter.Format(key, value));
         }
 
         public void Dispose()

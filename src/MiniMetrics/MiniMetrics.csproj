@@ -43,10 +43,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Extensions\DateTimeExtensions.cs" />
-    <Compile Include="Extensions\ObjectExtensions.cs" />
     <Compile Include="Extensions\TaskExtensions.cs" />
-    <Compile Include="DefaultFormatter.cs" />
     <Compile Include="Extensions\TcpMetricsClientExtensions.cs" />
+    <Compile Include="Formatting\DefaultFormatter.cs" />
+    <Compile Include="Formatting\IFormatter.cs" />
     <Compile Include="IMetricsClient.cs" />
     <Compile Include="MessageSentEventArgs.cs" />
     <Compile Include="Metrics.cs" />

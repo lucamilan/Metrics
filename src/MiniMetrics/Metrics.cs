@@ -57,7 +57,29 @@ namespace MiniMetrics
             }
         }
 
-        public static void Report<TValue>(String key, TValue value)
+        public static void Report(String key, Int16 value)
+        {
+            lock (Sync)
+            {
+                if (MetricsClient == null)
+                    throw new InvalidOperationException("client has to be started by calling 'Start' method");
+
+                MetricsClient.Report(key, value);
+            }
+        }
+
+        public static void Report(String key, Int32 value)
+        {
+            lock (Sync)
+            {
+                if (MetricsClient == null)
+                    throw new InvalidOperationException("client has to be started by calling 'Start' method");
+
+                MetricsClient.Report(key, value);
+            }
+        }
+
+        public static void Report(String key, Int64 value)
         {
             lock (Sync)
             {

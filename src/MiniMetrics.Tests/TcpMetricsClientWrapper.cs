@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using MiniMetrics.Formatting;
 using MiniMetrics.Net;
 using Moq;
 

@@ -65,7 +65,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="TcpMetricsClientTests.cs" />
-    <Compile Include="GraphiteFormatterTests.cs" />
     <Compile Include="MetricsTests.cs" />
     <Compile Include="MetricsOptionsTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

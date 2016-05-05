@@ -1,5 +1,6 @@
 ﻿using System;
 using MiniMetrics.Extensions;
+using MiniMetrics.Formatting;
 using Moq;
 using Xunit;
 

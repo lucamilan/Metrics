@@ -2,6 +2,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using MiniMetrics.Formatting;
 using MiniMetrics.Net;
 using Moq;
 using Xunit;
@@ -54,9 +55,9 @@ namespace MiniMetrics.Tests
         public void SendingAfterDisposing()
         {
             var wrapper = TcpMetricsClientWrapper.Stub();
-            wrapper.Send("key_1", "value_1");
+            wrapper.Send("key_1", 1);
             wrapper.Dispose();
-            Assert.Throws<ObjectDisposedException>(() => wrapper.Send("key_2", "value_2"));
+            Assert.Throws<ObjectDisposedException>(() => wrapper.Send("key_2", 2));
             wrapper.Dispose();
             Assert.Equal(1, wrapper.DisposeCount);
         }

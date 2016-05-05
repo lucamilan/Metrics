@@ -5,13 +5,24 @@ namespace MiniMetrics.Extensions
 {
     public static class TcpMetricsClientExtensions
     {
-        public static void Report<TValue>(this IMetricsClient client,
-                                          String key,
-                                          TValue value)
+        public static void Report(this IMetricsClient client,
+                                  String key,
+                                  Int16 value)
         {
-            if (key == null)
-                throw new ArgumentNullException(nameof(key));
+            client.Send(key, value);
+        }
 
+        public static void Report(this IMetricsClient client,
+                                  String key,
+                                  Int32 value)
+        {
+            client.Send(key, value);
+        }
+
+        public static void Report(this IMetricsClient client,
+                                  String key,
+                                  Int64 value)
+        {
             client.Send(key, value);
         }
 
