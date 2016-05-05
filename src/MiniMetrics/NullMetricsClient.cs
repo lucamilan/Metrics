@@ -4,6 +4,12 @@ namespace MiniMetrics
 {
     public class NullMetricsClient : IMetricsClient
     {
+        internal static readonly IMetricsClient Instance = new NullMetricsClient();
+
+        private NullMetricsClient()
+        {
+        }
+
         public event EventHandler<MessageSentEventArgs> OnMessageSent;
 
         public void Send(String key, Single value)

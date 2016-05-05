@@ -6,7 +6,7 @@ namespace MiniMetrics
 {
     public class Metrics
     {
-        private static IMetricsClient MetricsClient = new NullMetricsClient();
+        private static IMetricsClient MetricsClient = NullMetricsClient.Instance;
 
         private static readonly Object Sync = new Object();
 
@@ -22,6 +22,9 @@ namespace MiniMetrics
 
             lock (Sync)
             {
+                if (!(MetricsClient is NullMetricsClient))
+                    return;
+
                 StopInternal();
                 TcpMetricsClient.StartAsync(OutbountChannel.From(options.HostName, options.Port).Build())
                                 .ContinueWith(_ => MetricsClient = _.Result)
@@ -36,7 +39,7 @@ namespace MiniMetrics
 
             lock (Sync)
             {
-                if (MetricsClient != null)
+                if (!(MetricsClient is NullMetricsClient))
                     return;
 
                 StopInternal();
@@ -50,7 +53,7 @@ namespace MiniMetrics
         {
             lock (Sync)
             {
-                if (MetricsClient == null)
+                if (MetricsClient is NullMetricsClient)
                     return;
 
                 StopInternal();
@@ -59,68 +62,38 @@ namespace MiniMetrics
 
         public static void Report(String key, Single value)
         {
-            lock (Sync)
-            {
-                ThrowOnNullClient();
-                MetricsClient.Report(key, value);
-            }
+            MetricsClient.Report(key, value);
         }
 
         public static void Report(String key, Double value)
         {
-            lock (Sync)
-            {
-                ThrowOnNullClient();
-                MetricsClient.Report(key, value);
-            }
+            MetricsClient.Report(key, value);
         }
 
         public static void Report(String key, Int16 value)
         {
-            lock (Sync)
-            {
-                ThrowOnNullClient();
-                MetricsClient.Report(key, value);
-            }
+            MetricsClient.Report(key, value);
         }
 
         public static void Report(String key, Int32 value)
         {
-            lock (Sync)
-            {
-                ThrowOnNullClient();
-                MetricsClient.Report(key, value);
-            }
+            MetricsClient.Report(key, value);
         }
 
         public static void Report(String key, Int64 value)
         {
-            lock (Sync)
-            {
-                ThrowOnNullClient();
-                MetricsClient.Report(key, value);
-            }
+            MetricsClient.Report(key, value);
         }
 
         public static IDisposable ReportTimer(String key, Func<IStopwatch> stopWatchFactory = null)
         {
-            lock (Sync)
-            {
-                ThrowOnNullClient();
-                return MetricsClient.ReportTimer(key, stopWatchFactory ?? SimpleStopwatch.StartNew);
-            }
+            return MetricsClient.ReportTimer(key, stopWatchFactory ?? SimpleStopwatch.StartNew);
         }
 
         private static void StopInternal()
         {
-            MetricsClient?.Dispose();
-            MetricsClient = null;
-        }
-
-        private static void ThrowOnNullClient()
-        {
-            if (MetricsClient == null)
-                throw new InvalidOperationException("client has to be started by calling 'Start' method");
+            MetricsClient.Dispose();
+            MetricsClient = NullMetricsClient.Instance;
         }
     }
 }

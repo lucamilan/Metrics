@@ -21,7 +21,7 @@ namespace MiniMetrics
 
         public Func<IMetricsClient> MetricsClient
         {
-            get { return _metricsClient ?? (() => new NullMetricsClient()); }
+            get { return _metricsClient ?? (() => NullMetricsClient.Instance); }
             set { _metricsClient = value; }
         }
 
