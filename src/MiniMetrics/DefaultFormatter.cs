@@ -26,7 +26,7 @@ namespace MiniMetrics
                 throw new ArgumentOutOfRangeException(nameof(key));
 
             if (!value.IsNumber())
-                throw new InvalidCastException($"value has wrong type {value?.GetType()}");
+                throw new NotSupportedException($"type '{value?.GetType().Name}' is not supported");
 
             return $"{Sanitize(_keyBuilder(key))} {value} { DateTimeExtensions.ToUnixTimestamp() }{Environment.NewLine}";
         }

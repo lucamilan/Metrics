@@ -1,10 +1,9 @@
 ﻿using System;
+using MiniMetrics.Extensions;
 using Xunit;
 
 namespace MiniMetrics.Tests
 {
-    using MiniMetrics.Extensions;
-
     public class GraphiteFormatterTests : IDisposable
     {
         private readonly DefaultFormatter _sut;
@@ -38,7 +37,7 @@ namespace MiniMetrics.Tests
         [InlineData(null)]
         public void NonNumberTypesThrowException(Object value)
         {
-            Assert.Throws<InvalidCastException>(() => _sut.Format("test", value));
+            Assert.Throws<NotSupportedException>(() => _sut.Format("test", value));
         }
 
         public void Dispose()
