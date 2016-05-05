@@ -7,6 +7,20 @@ namespace MiniMetrics.Extensions
     {
         public static void Report(this IMetricsClient client,
                                   String key,
+                                  Single value)
+        {
+            client.Send(key, value);
+        }
+
+        public static void Report(this IMetricsClient client,
+                                  String key,
+                                  Double value)
+        {
+            client.Send(key, value);
+        }
+
+        public static void Report(this IMetricsClient client,
+                                  String key,
                                   Int16 value)
         {
             client.Send(key, value);
@@ -30,9 +44,6 @@ namespace MiniMetrics.Extensions
                                               String key,
                                               Func<IStopwatch> stopwatchFactory = null)
         {
-            if (key == null)
-                throw new ArgumentNullException(nameof(key));
-
             return new Timer(key, (stopwatchFactory ?? SimpleStopwatch.StartNew)(), client.Send);
         }
 
@@ -46,6 +57,9 @@ namespace MiniMetrics.Extensions
 
             public Timer(String key, IStopwatch stopwatchFactory, Action<String, Int64> action)
             {
+                if (key == null)
+                    throw new ArgumentNullException(nameof(key));
+
                 _key = key;
                 _stopwatchFactory = stopwatchFactory;
                 _action = action;

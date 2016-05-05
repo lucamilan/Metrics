@@ -58,6 +58,18 @@ namespace MiniMetrics
             BackgroundWorkAsync(_cts.Token);
         }
 
+        public void Send(String key, Single value)
+        {
+            PreCheck(key);
+            Queue.Enqueue(_formatter.Format(key, value));
+        }
+
+        public void Send(String key, Double value)
+        {
+            PreCheck(key);
+            Queue.Enqueue(_formatter.Format(key, value));
+        }
+
         public void Send(String key, Int16 value)
         {
             PreCheck(key);

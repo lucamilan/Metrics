@@ -18,6 +18,16 @@ namespace MiniMetrics.Formatting
             _keyBuilder = keyBuilder ?? (_ => _);
         }
 
+        public String Format(String key, Single value)
+        {
+            return FormatInternal(key, value.ToString(CultureInfo.InvariantCulture));
+        }
+
+        public String Format(String key, Double value)
+        {
+            return FormatInternal(key, value.ToString(CultureInfo.InvariantCulture));
+        }
+
         public String Format(String key, Int32 value)
         {
             return FormatInternal(key, value.ToString(CultureInfo.InvariantCulture));

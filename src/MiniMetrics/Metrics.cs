@@ -57,13 +57,29 @@ namespace MiniMetrics
             }
         }
 
+        public static void Report(String key, Single value)
+        {
+            lock (Sync)
+            {
+                ThrowOnNullClient();
+                MetricsClient.Report(key, value);
+            }
+        }
+
+        public static void Report(String key, Double value)
+        {
+            lock (Sync)
+            {
+                ThrowOnNullClient();
+                MetricsClient.Report(key, value);
+            }
+        }
+
         public static void Report(String key, Int16 value)
         {
             lock (Sync)
             {
-                if (MetricsClient == null)
-                    throw new InvalidOperationException("client has to be started by calling 'Start' method");
-
+                ThrowOnNullClient();
                 MetricsClient.Report(key, value);
             }
         }
@@ -72,9 +88,7 @@ namespace MiniMetrics
         {
             lock (Sync)
             {
-                if (MetricsClient == null)
-                    throw new InvalidOperationException("client has to be started by calling 'Start' method");
-
+                ThrowOnNullClient();
                 MetricsClient.Report(key, value);
             }
         }
@@ -83,9 +97,7 @@ namespace MiniMetrics
         {
             lock (Sync)
             {
-                if (MetricsClient == null)
-                    throw new InvalidOperationException("client has to be started by calling 'Start' method");
-
+                ThrowOnNullClient();
                 MetricsClient.Report(key, value);
             }
         }
@@ -94,9 +106,7 @@ namespace MiniMetrics
         {
             lock (Sync)
             {
-                if (MetricsClient == null)
-                    throw new InvalidOperationException("client has to be started by calling 'Start' method");
-
+                ThrowOnNullClient();
                 return MetricsClient.ReportTimer(key, stopWatchFactory ?? SimpleStopwatch.StartNew);
             }
         }
@@ -105,6 +115,12 @@ namespace MiniMetrics
         {
             MetricsClient?.Dispose();
             MetricsClient = null;
+        }
+
+        private static void ThrowOnNullClient()
+        {
+            if (MetricsClient == null)
+                throw new InvalidOperationException("client has to be started by calling 'Start' method");
         }
     }
 }

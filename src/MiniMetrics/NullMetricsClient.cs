@@ -6,6 +6,14 @@ namespace MiniMetrics
     {
         public event EventHandler<MessageSentEventArgs> OnMessageSent;
 
+        public void Send(String key, Single value)
+        {
+        }
+
+        public void Send(String key, Double value)
+        {
+        }
+
         public void Send(String key, Int16 value)
         {
         }
