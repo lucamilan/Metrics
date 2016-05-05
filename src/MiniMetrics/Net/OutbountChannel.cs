@@ -76,10 +76,10 @@ namespace MiniMetrics.Net
             try { stream = Client.GetStream(); }
             catch (Exception exception) { return Task.FromException(exception); }
 
-            return WriteAsync(stream, 0, data);
+            return WriteAsync(stream, 0, data, token);
         }
 
-        private static Task WriteAsync(Stream stream, Int32 offset, Byte[] data)
+        private static Task WriteAsync(Stream stream, Int32 offset, Byte[] data, CancellationToken token)
         {
             var diff = data.Length - offset;
             var size = diff <= BufferSize ? diff : BufferSize;
@@ -96,8 +96,9 @@ namespace MiniMetrics.Net
                                                     return _;
                                                 }
 
-                                                return WriteAsync(stream, offset + BufferSize, data);
-                                            })
+                                                return WriteAsync(stream, offset + BufferSize, data, token);
+                                            },
+                                            token)
                        .Unwrap();
         }
     }

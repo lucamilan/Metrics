@@ -4,7 +4,7 @@ using MiniMetrics.Extensions;
 
 namespace MiniMetrics.Formatting
 {
-    public class DefaultFormatter : IFormatter
+    public class DefaultFormatter : IFormatter // TODO: should be an abstract class with key sanitization enforcing
     {
         private readonly Func<String, String> _keyBuilder;
 
