@@ -1,156 +1,143 @@
 using System;
 using System.Collections.Concurrent;
-using System.Net;
-using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using MiniMetrics.Extensions;
+using MiniMetrics.Formatting;
+using MiniMetrics.Net;
 
 namespace MiniMetrics
 {
-    // TODO: throw ObjectDisposedException
-    // TODO: autorecovery
     public class TcpMetricsClient : IMetricsClient
     {
         private static readonly TimeSpan DefaultBreathTime = TimeSpan.FromSeconds(5d);
 
-        private readonly ConcurrentQueue<String> _messages = new ConcurrentQueue<String>();
+        protected readonly ConcurrentQueue<String> Queue = new ConcurrentQueue<String>();
+
         private readonly CancellationTokenSource _cts;
-        private readonly TcpClient _client;
+        private readonly IOutbountChannel _channel;
         private readonly TimeSpan _breathTime;
+        private readonly IFormatter _formatter;
         private readonly Func<Encoding> _encodingFactory;
 
         public event EventHandler<MessageSentEventArgs> OnMessageSent;
 
         private Int32 _disposed;
 
-        public static Task<IMetricsClient> StartAsync(String hostname,
-                                                      Int32 port,
+        public static Task<IMetricsClient> StartAsync(IOutbountChannel channel,
+                                                      IFormatter formatter = null,
                                                       Func<Encoding> encodingFactory = null)
         {
-            return StartAsync(hostname, port, DefaultBreathTime, encodingFactory);
+            return StartAsync(channel, DefaultBreathTime, formatter, encodingFactory);
         }
 
-        public static Task<IMetricsClient> StartAsync(String hostname,
-                                                      Int32 port,
+        public static Task<IMetricsClient> StartAsync(IOutbountChannel channel,
                                                       TimeSpan breathTime,
+                                                      IFormatter formatter = null,
                                                       Func<Encoding> encodingFactory = null)
         {
-            if (hostname == null)
-                throw new ArgumentNullException(nameof(hostname));
-
-            if (hostname.Length == 0)
-                throw new ArgumentOutOfRangeException(nameof(hostname));
-
-            return Dns.GetHostEntryAsync(hostname)
-                      .ContinueWith(_ =>
-                                    {
-                                        _.ThrowOnError();
-
-                                        if (_.Result.AddressList.Length == 0)
-                                            throw new InvalidOperationException("unable to find an ip address for specified hostname");
-
-                                        return StartAsync(_.Result.AddressList[0], port);
-                                    })
-                      .Unwrap();
+            return channel.ConnectAsync()
+                          .ContinueWithOrThrow(_ => (IMetricsClient)new TcpMetricsClient(channel,
+                                                                                         breathTime,
+                                                                                         formatter ?? new DefaultFormatter(),
+                                                                                         encodingFactory ?? (() => new UTF8Encoding(true))));
         }
 
-        public static Task<IMetricsClient> StartAsync(IPAddress address,
-                                                      Int32 port,
-                                                      Func<Encoding> encodingFactory = null)
+        protected TcpMetricsClient(IOutbountChannel channel,
+                                   TimeSpan breathTime,
+                                   IFormatter formatter,
+                                   Func<Encoding> encodingFactory)
         {
-            return StartAsync(address, port, DefaultBreathTime, encodingFactory);
-        }
-
-        public static Task<IMetricsClient> StartAsync(IPAddress address,
-                                                      Int32 port,
-                                                      TimeSpan breathTime,
-                                                      Func<Encoding> encodingFactory = null)
-        {
-            var client = new TcpClient { ExclusiveAddressUse = false };
-
-            return client.ConnectAsync(address, port)
-                         .ContinueWith(_ =>
-                                       {
-                                           _.ThrowOnError();
-                                           return (IMetricsClient)new TcpMetricsClient(client,
-                                                                                       breathTime,
-                                                                                       encodingFactory ?? (() => new UTF8Encoding(true)));
-                                       });
-        }
-
-        private TcpMetricsClient(TcpClient client,
-                                 TimeSpan breathTime,
-                                 Func<Encoding> encodingFactory)
-        {
-            _client = client;
+            _channel = channel;
             _breathTime = breathTime;
+            _formatter = formatter;
             _encodingFactory = encodingFactory;
             _cts = new CancellationTokenSource();
 
             BackgroundWorkAsync(_cts.Token);
         }
 
-        public void Send(String message)
+        public void Send(String key, Single value)
         {
-            if (message == null)
-                throw new ArgumentNullException(nameof(message));
+            PreCheck(key);
+            Queue.Enqueue(_formatter.Format(key, value));
+        }
 
-            _messages.Enqueue(message);
+        public void Send(String key, Double value)
+        {
+            PreCheck(key);
+            Queue.Enqueue(_formatter.Format(key, value));
+        }
+
+        public void Send(String key, Int16 value)
+        {
+            PreCheck(key);
+            Queue.Enqueue(_formatter.Format(key, value));
+        }
+
+        public void Send(String key, Int32 value)
+        {
+            PreCheck(key);
+            Queue.Enqueue(_formatter.Format(key, value));
+        }
+
+        public void Send(String key, Int64 value)
+        {
+            PreCheck(key);
+            Queue.Enqueue(_formatter.Format(key, value));
+        }
+
+        private void PreCheck(String key)
+        {
+            if (key == null)
+                throw new ArgumentNullException(nameof(key));
+
+            var i = Interlocked.CompareExchange(ref _disposed, 0, 0);
+
+            if (i == 1)
+                throw new ObjectDisposedException(GetType().Name);
         }
 
         public void Dispose()
         {
             var i = Interlocked.CompareExchange(ref _disposed, 1, 0);
 
-            if (i == 0)
+            if (i == 1)
                 return;
 
+            DisposeInternal();
+        }
+
+        protected virtual void DisposeInternal()
+        {
             try
             {
                 _cts.Cancel();
-                _client?.Close();
+                _channel?.Dispose();
             }
             catch { }
         }
 
         private void BackgroundWorkAsync(CancellationToken token)
         {
-            BuildTask(token).ContinueWith(_ => BackgroundWorkAsync(token), token);
+            BuildTask(token).ContinueWithOrThrow(_ => BackgroundWorkAsync(token), token);
         }
 
         private Task BuildTask(CancellationToken token)
         {
-            Task task;
             String message;
 
-            if (_messages.TryDequeue(out message))
-            {
-                var bytes = _encodingFactory().GetBytes(message);
-                var stream = _client.GetStream();
+            return Queue.TryDequeue(out message)
+                       ? _channel.WriteAsync(_encodingFactory().GetBytes(message), token)
+                                 .ContinueWithOrThrow(_ => RaiseOnMessageSent(message), token)
+                       : Task.Delay(_breathTime, token);
+        }
 
-                task = Task.Factory
-                           .FromAsync(stream.BeginWrite, stream.EndWrite, bytes, 0, bytes.Length, null)
-                           .ContinueWith(_ =>
-                                         {
-                                             stream.Dispose();
-
-                                             if (_.Exception != null)
-                                                 throw _.Exception.GetBaseException();
-
-                                             if (token.IsCancellationRequested)
-                                                 throw new Exception("task has been cancelled.");
-
-                                             var temp = Interlocked.CompareExchange(ref OnMessageSent, null, null);
-                                             temp?.Invoke(this, new MessageSentEventArgs(message));
-                                         },
-                                         token);
-            }
-            else
-                task = Task.Delay(_breathTime, token);
-
-            return task;
+        private void RaiseOnMessageSent(String message)
+        {
+            var temp1 = Interlocked.CompareExchange(ref OnMessageSent, null, null);
+            temp1?.Invoke(this, new MessageSentEventArgs(message));
         }
     }
 }

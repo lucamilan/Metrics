@@ -1,12 +1,14 @@
 ﻿using System;
-using System.Threading;
+using MiniMetrics.Extensions;
+using MiniMetrics.Net;
 
 namespace MiniMetrics
 {
     public class Metrics
     {
-        private static IMetricsClient MetricsClient = new NullMetricsClient();
-        private static MetricsOptions Options;
+        private static IMetricsClient MetricsClient = NullMetricsClient.Instance;
+
+        private static readonly Object Sync = new Object();
 
         public static void StartFromConfig()
         {
@@ -18,72 +20,80 @@ namespace MiniMetrics
             if (options == null)
                 throw new ArgumentNullException(nameof(options));
 
-            Options = options;
+            lock (Sync)
+            {
+                if (!(MetricsClient is NullMetricsClient))
+                    return;
 
-            Stop();
+                StopInternal();
+                TcpMetricsClient.StartAsync(OutbountChannel.From(options.HostName, options.Port).Build())
+                                .ContinueWith(_ => MetricsClient = _.Result)
+                                .Wait();
+            }
+        }
 
-            var client = options.MetricsClient();
+        public static void StartAutoRecoverable(MetricsOptions options, TimeSpan recoverySlice)
+        {
+            if (options == null)
+                throw new ArgumentNullException(nameof(options));
 
-            if (client == null)
-                throw new InvalidOperationException("MetricsClient is null");
+            lock (Sync)
+            {
+                if (!(MetricsClient is NullMetricsClient))
+                    return;
 
-            MetricsClient = client;
+                StopInternal();
+                TcpMetricsClient.StartAsync(OutbountChannel.From(options.HostName, options.Port).BuildAutoRecoverable(recoverySlice))
+                                .ContinueWith(_ => MetricsClient = _.Result)
+                                .Wait();
+            }
         }
 
         public static void Stop()
         {
-            MetricsClient.Dispose();
+            lock (Sync)
+            {
+                if (MetricsClient is NullMetricsClient)
+                    return;
+
+                StopInternal();
+            }
         }
 
-        public static void Report(String key, Int64 value)
+        public static void Report(String key, Single value)
         {
-            PrepareAndSend(key, value);
+            MetricsClient.Report(key, value);
+        }
+
+        public static void Report(String key, Double value)
+        {
+            MetricsClient.Report(key, value);
+        }
+
+        public static void Report(String key, Int16 value)
+        {
+            MetricsClient.Report(key, value);
         }
 
         public static void Report(String key, Int32 value)
         {
-            PrepareAndSend(key, value);
+            MetricsClient.Report(key, value);
         }
 
-        public static IDisposable ReportTimer(String key)
+        public static void Report(String key, Int64 value)
         {
-            return new Timer(key, Options.Stopwatch());
+            MetricsClient.Report(key, value);
         }
 
-        private static void PrepareAndSend(String key, Object value)
+        public static IDisposable ReportTimer(String key, Func<IStopwatch> stopWatchFactory = null)
         {
-            if (key == null)
-                throw new ArgumentNullException(nameof(key));
-
-            var namespacedKey = Options.KeyBuilder(key);
-            var message = new GraphiteFormatter().Format(namespacedKey, value);
-
-            MetricsClient.Send(message);
+            return MetricsClient.ReportTimer(key, stopWatchFactory ?? SimpleStopwatch.StartNew);
         }
 
-        private class Timer : IDisposable
+        private static void StopInternal()
         {
-            private readonly String _key;
-            private readonly IStopwatch _stopWatch;
-
-            private Int32 _disposed;
-
-            public Timer(String key, IStopwatch stopWatch)
-            {
-                _key = key;
-                _stopWatch = stopWatch;
-            }
-
-            public void Dispose()
-            {
-                var i = Interlocked.CompareExchange(ref _disposed, 1, 0);
-
-                if (i == 1)
-                    return;
-
-                _stopWatch.Stop();
-                Report(_key, _stopWatch.ElapsedMilliseconds);
-            }
+            MetricsClient.Dispose();
+            MetricsClient = NullMetricsClient.Instance;
         }
     }
 }
